@@ -79,7 +79,7 @@ class NodeLookup(object):
         return self.node_lookup[node_id]
 
 
-class ImageClassifier:
+class InceptionImageClassifier:
     def __init__(self):
         # directory of inception model
         self.model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "inception-2015-12-05")
@@ -136,12 +136,47 @@ class ImageClassifier:
             return tags
 
 
-def main():
-    image_url = "http://logo.cafepress.com/4/47317090.8659414.jpg"
-    my_classifier = ImageClassifier()
-    pred = my_classifier.run_inference_on_image(image_url)
-    print(pred)
+class CustomImageClassifier:
+    def __init__(self):
+        self.modelFullPath = os.path.dirname(os.path.abspath(__file__)) + "/model/output_graph_2.pb"
+        self.labelsFullPath = os.path.dirname(os.path.abspath(__file__)) + "/model/output_labels_2.txt"
+        self.create_graph()
+
+    def create_graph(self):
+        """Creates a graph from saved GraphDef file and returns a saver."""
+        # Creates graph from saved graph_def.pb.
+        with tf.gfile.FastGFile(self.modelFullPath, 'rb') as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+            del (graph_def.node[1].attr["dct_method"])
+            _ = tf.import_graph_def(graph_def, name='')
+
+    def run_inference_on_image(self, image_url):
+
+        # Creates graph from saved GraphDef.
+        image_data = urllib.urlopen(image_url).read()
+
+        with tf.Session() as sess:
+            softmax_tensor = sess.graph.get_tensor_by_name('final_result:0')
+            predictions = sess.run(softmax_tensor,
+                                   {'DecodeJpeg/contents:0': image_data})
+            predictions = np.squeeze(predictions)
+
+            top_k = predictions.argsort()[-5:][::-1]  # Getting top 5 predictions
+            f = open(self.labelsFullPath, 'rb')
+            lines = f.readlines()
+            labels = [str(w).replace("\n", "") for w in lines]
+
+            return [labels[top_k[0]], predictions[top_k[0]]]
 
 
-if __name__ == "__main__":
-    main()
+
+# def main():
+#     image_url="https://images.viglink.com/product/250x250/images-eu-ssl-images-amazon-com/42ead83131510dcf3ba4b9666462f4da9a4c8782.jpg?url=https%3A%2F%2Fimages-eu.ssl-images-amazon.com%2Fimages%2FI%2F41Getv2arAL.jpg%2F518prb1KzVL.jpg"
+#     my_classifier = CustomImageClassifier()
+#     pred = my_classifier.run_inference_on_image(image_url)
+#     print(pred)
+#
+#
+# if __name__ == "__main__":
+#     main()

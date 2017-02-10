@@ -1,4 +1,5 @@
 *.idea
 *.pyc
-counts/
 inception*
+*.DS_Store
+SQSWriter.py
