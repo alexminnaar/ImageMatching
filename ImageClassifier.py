@@ -138,8 +138,8 @@ class InceptionImageClassifier:
 
 class CustomImageClassifier:
     def __init__(self):
-        self.modelFullPath = os.path.dirname(os.path.abspath(__file__)) + "/model/output_graph_2.pb"
-        self.labelsFullPath = os.path.dirname(os.path.abspath(__file__)) + "/model/output_labels_2.txt"
+        self.modelFullPath = os.path.dirname(os.path.abspath(__file__)) + "/model/output_graph_3.pb"
+        self.labelsFullPath = os.path.dirname(os.path.abspath(__file__)) + "/model/output_labels_3.txt"
         self.create_graph()
 
     def create_graph(self):

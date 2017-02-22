@@ -1,0 +1,17 @@
+consumer_electronics
+family_and_baby
+jewelry_and_watches
+toys_and_hobbies
+cameras_and_photo
+computing
+automotive
+food_and_drink
+cell_phones_and_mobile
+home_and_garden
+news_books_and_magazines
+gaming
+sports_and_fitness
+pets
+fashion_and_accessories
+arts_and_entertainment
+health_and_beauty
