@@ -8,16 +8,20 @@ import sys
 import logging
 import hashlib
 
-logging.basicConfig(level=logging.WARNING)
+LOG_FILENAME = "sqs_polling.log"
+logging.basicConfig(filename=LOG_FILENAME, level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-PREFIX="ImageMatcherService"
+PREFIX = "ImageMatcherService"
 SEPARATOR = 0x1e
+
 
 def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
     '''
     Poll SQS queue - for each message received get match score between image and title and persist result to memcache
     '''
+
+    logger.warning("Process %d: Beginning to poll SQS" % process_id)
 
     # SQS client config
     sqs = boto3.resource('sqs', region_name='us-east-1')
@@ -37,28 +41,29 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
             logger.warning("Process %d: Read message: %s" % (process_id, message.body))
 
             # get image url and title from message
-            #msg_body = json.loads(message.body)
+            # msg_body = json.loads(message.body)
             image_url = message.body
 
             # get image prediction
             try:
-            	image_pred = image_clf.run_inference_on_image(image_url)
+                image_pred = image_clf.run_inference_on_image(image_url)
 
-            	logger.warning('Process %d: Prediction based on Image: %s with confidence %s' % (
-                	process_id, image_pred[0], str(image_pred[1])))
-            
-            	#write prediction to memcached
+                logger.warning('Process %d: Prediction based on Image: %s with confidence %s' % (
+                    process_id, image_pred[0], str(image_pred[1])))
+
+                # write prediction to memcached
                 if image_pred[1] > min_prob:
                     memcache_client.set('%s' % hashlib.md5(image_url).hexdigest(), image_pred[0])
                 else:
                     memcache_client.set('%s' % hashlib.md5(image_url).hexdigest(), "prediction below threshold")
 
-		logger.warning("Process %d: Sucessfully wrote to memcached"%process_id)
-		logger.warning("Process %d: memcached key %s"%(process_id,hashlib.md5(image_url).hexdigest()))
-		logger.warning("Process %d: value in memcached: %s"%(process_id,memcache_client.get(hashlib.md5(image_url).hexdigest())))
+                logger.warning("Process %d: Sucessfully wrote to memcached" % process_id)
+                logger.warning("Process %d: memcached key %s" % (process_id, hashlib.md5(image_url).hexdigest()))
+                logger.warning("Process %d: value in memcached: %s" % (
+                    process_id, memcache_client.get(hashlib.md5(image_url).hexdigest())))
             except Exception:
                 logger.error("Process %d: Failed to write to memcached" % process_id, exc_info=True)
-		pass                
+                pass
             message.delete()
 
 
@@ -108,6 +113,7 @@ def main():
     p6.join()
     p7.join()
     p8.join()
+
 
 if __name__ == "__main__":
     main()
