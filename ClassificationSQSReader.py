@@ -10,7 +10,7 @@ import hashlib
 from time import sleep
 
 LOG_FILENAME = "sqs_polling.log"
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(filename=LOG_FILENAME, level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 PREFIX = "ImageMatcherService"
