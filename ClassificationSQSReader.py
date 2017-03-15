@@ -12,8 +12,9 @@ from time import sleep
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-PREFIX = "ImageMatcherService"
-SEPARATOR = 0x1e
+
+# PREFIX = "ImageMatcherService"
+# SEPARATOR = 0x1e
 
 
 def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
@@ -35,10 +36,14 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
     # poll sqs forever
     while 1:
+
+        # polling delay so aws does not throttle us
+        sleep(1.0)
+
         # receives up to 10 messages at a time
         for message in queue.receive_messages():
 
-            logger.warning("Read message: %s" % message.body)
+            # logger.warning("Read message: %s" % message.body)
 
             # get image url and title from message
             image_url = message.body
@@ -47,7 +52,11 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
             try:
                 image_pred = image_clf.run_inference_on_image(image_url)
 
-                logger.warning('Prediction based on image %s with confidence %s' % (image_pred[0], str(image_pred[1])))
+                logger.warning('Process %d: Prediction based on image |%s| is |%s| with confidence |%s|' % (process_id,
+                                                                                                            image_url,
+                                                                                                            image_pred[
+                                                                                                                0], str(
+                    image_pred[1])))
 
                 # write prediction to memcached
                 if image_pred[1] > min_prob:
@@ -61,7 +70,8 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
                     #     process_id, memcache_client.get(hashlib.md5(image_url).hexdigest())))
             except Exception:
                 logger.error("Failed to write to memcached", exc_info=True)
-                pass
+                # pass
+
             message.delete()
 
 
@@ -70,7 +80,7 @@ def main():
     memcache_endpoint = sys.argv[2]
     min_prob = float(sys.argv[3])
 
-    #sqs_polling(queue_name, memcache_endpoint, min_prob)
+    # sqs_polling(queue_name, memcache_endpoint, min_prob)
 
     # keep track of processes to restart if needed. PID => Process
     processes = {}
