@@ -9,20 +9,19 @@ import logging
 import hashlib
 from time import sleep
 
-LOG_FILENAME = "sqs_polling.log"
-logging.basicConfig(filename=LOG_FILENAME, level=logging.WARNING)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 PREFIX = "ImageMatcherService"
 SEPARATOR = 0x1e
 
 
-def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
+def sqs_polling(queue_name, memcache_endpoint, min_prob):
     '''
     Poll SQS queue - for each message received get image classification and persist result to memcache
     '''
 
-    logger.warning("Process %d: Beginning to poll SQS" % process_id)
+    logger.warning("Beginning to poll SQS")
 
     # SQS client config
     sqs = boto3.resource('sqs', region_name='us-east-1')
@@ -39,7 +38,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
         # receives up to 10 messages at a time
         for message in queue.receive_messages():
 
-            logger.warning("Process %d: Read message: %s" % (process_id, message.body))
+            logger.warning("Read message: %s" % message.body)
 
             # get image url and title from message
             image_url = message.body
@@ -48,8 +47,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
             try:
                 image_pred = image_clf.run_inference_on_image(image_url)
 
-                logger.warning('Process %d: Prediction based on image %s with confidence %s' % (
-                    process_id, image_pred[0], str(image_pred[1])))
+                logger.warning('Prediction based on image %s with confidence %s' % (image_pred[0], str(image_pred[1])))
 
                 # write prediction to memcached
                 if image_pred[1] > min_prob:
@@ -62,7 +60,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
                     # logger.warning("Process %d: value in memcached: %s" % (
                     #     process_id, memcache_client.get(hashlib.md5(image_url).hexdigest())))
             except Exception:
-                logger.error("Process %d: Failed to write to memcached" % process_id, exc_info=True)
+                logger.error("Failed to write to memcached", exc_info=True)
                 pass
             message.delete()
 
@@ -72,40 +70,42 @@ def main():
     memcache_endpoint = sys.argv[2]
     min_prob = float(sys.argv[3])
 
-    # keep track of processes to restart if needed. PID => Process
-    processes = {}
+    sqs_polling(queue_name, memcache_endpoint, min_prob)
 
-    num_processes = range(1, 9)
-
-    for p_num in num_processes:
-        p = multiprocessing.Process(
-            target=sqs_polling, args=(queue_name, memcache_endpoint, min_prob, p_num,))
-        p.start()
-        processes[p_num] = p
-
-    # periodically poll child processes to check if they are still alive
-    while len(processes) > 0:
-
-        # check every 5 minutes
-        sleep(300.0)
-
-        for n in processes.keys():
-            p = processes[n]
-
-            # if process is dead, create a new one to take its place
-            if not p.is_alive():
-                logger.error('Process %d is dead! Starting new process to take its place.' % n)
-                replacement_p = multiprocessing.Process(target=sqs_polling,
-                                                        args=(queue_name, memcache_endpoint, min_prob, n,))
-                replacement_p.start()
-                processes[n] = replacement_p
-
-            elif p.is_alive():
-                logger.warning('Process %d is still alive' % n)
-
-            # since polling never ends, sqs_polling should never successfully exit but we add this for completeness
-            elif p.exitcode == 0:
-                p.join()
+    # # keep track of processes to restart if needed. PID => Process
+    # processes = {}
+    #
+    # num_processes = range(1, 9)
+    #
+    # for p_num in num_processes:
+    #     p = multiprocessing.Process(
+    #         target=sqs_polling, args=(queue_name, memcache_endpoint, min_prob, p_num,))
+    #     p.start()
+    #     processes[p_num] = p
+    #
+    # # periodically poll child processes to check if they are still alive
+    # while len(processes) > 0:
+    #
+    #     # check every 5 minutes
+    #     sleep(300.0)
+    #
+    #     for n in processes.keys():
+    #         p = processes[n]
+    #
+    #         # if process is dead, create a new one to take its place
+    #         if not p.is_alive():
+    #             logger.error('Process %d is dead! Starting new process to take its place.' % n)
+    #             replacement_p = multiprocessing.Process(target=sqs_polling,
+    #                                                     args=(queue_name, memcache_endpoint, min_prob, n,))
+    #             replacement_p.start()
+    #             processes[n] = replacement_p
+    #
+    #         elif p.is_alive():
+    #             logger.warning('Process %d is still alive' % n)
+    #
+    #         # since polling never ends, sqs_polling should never successfully exit but we add this for completeness
+    #         elif p.exitcode == 0:
+    #             p.join()
 
 
 if __name__ == "__main__":
