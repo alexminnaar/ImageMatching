@@ -38,10 +38,10 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
     while 1:
 
         # polling delay so aws does not throttle us
-        sleep(1.0)
+        sleep(2.0)
 
         # receives up to 10 messages at a time
-        for message in queue.receive_messages(MaxNumberOfMessages=10, WaitTimeSeconds=10):
+        for message in queue.receive_messages(MaxNumberOfMessages=10, WaitTimeSeconds=20):
 
             # logger.warning("Read message: %s" % message.body)
 
