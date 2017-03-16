@@ -34,18 +34,30 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
     # create image matcher object. This loads Inception model in memory.
     image_clf = CustomImageClassifier()
 
+    no_messages = False
+
     # poll sqs forever
     while 1:
 
         # polling delay so aws does not throttle us
         sleep(2.0)
 
-        # receives up to 10 messages at a time
-        for message in queue.receive_messages(MaxNumberOfMessages=10, WaitTimeSeconds=20):
+        # sleep longer if there are no messages on the queue the last time it was polled
+        if no_messages:
+            sleep(300.0)
 
-            # logger.warning("Read message: %s" % message.body)
+        # get next batch of messages (up to 10 at a time)
+        message_batch = queue.receive_messages(MaxNumberOfMessages=10, WaitTimeSeconds=20)
 
-            # get image url and title from message
+        if len(message_batch) == 0:
+            no_messages = True
+        else:
+            no_messages = False
+
+        # process messages
+        for message in message_batch:
+
+            # get image url from message
             image_url = message.body
 
             # get image prediction
@@ -64,13 +76,8 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
                 else:
                     memcache_client.set('%s' % hashlib.md5(image_url).hexdigest(), "prediction below threshold")
 
-                    # logger.warning("Process %d: Sucessfully wrote to memcached" % process_id)
-                    # logger.warning("Process %d: memcached key %s" % (process_id, hashlib.md5(image_url).hexdigest()))
-                    # logger.warning("Process %d: value in memcached: %s" % (
-                    #     process_id, memcache_client.get(hashlib.md5(image_url).hexdigest())))
             except Exception:
                 logger.error("Failed to write to memcached", exc_info=True)
-                # pass
 
             message.delete()
 
