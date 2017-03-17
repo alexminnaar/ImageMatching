@@ -36,8 +36,17 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
     no_messages = False
 
+    refresh_counter = 0
+
     # poll sqs forever
     while 1:
+
+        refresh_counter += 1
+
+        # every 20th poll, reconnect to sqs to prevent stale connection
+        if refresh_counter % 20 == 0:
+            queue = sqs.get_queue_by_name(QueueName=queue_name)
+            refresh_counter = 0
 
         # polling delay so aws does not throttle us
         sleep(2.0)
