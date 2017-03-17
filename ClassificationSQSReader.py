@@ -45,6 +45,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
         # every 20th poll, reconnect to sqs to prevent stale connection
         if refresh_counter % 20 == 0:
+            logger.warning('Process %d: refreshing connection' % process_id)
             queue = sqs.get_queue_by_name(QueueName=queue_name)
             refresh_counter = 0
 
@@ -57,6 +58,8 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
         # get next batch of messages (up to 10 at a time)
         message_batch = queue.receive_messages(MaxNumberOfMessages=10, WaitTimeSeconds=20)
+
+        logger.warning('Process %d: received %d messages' % (process_id, len(message_batch)))
 
         if len(message_batch) == 0:
             no_messages = True
