@@ -55,7 +55,9 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
         # sleep longer if there are no messages on the queue the last time it was polled
         if no_messages:
+            logger.warning('Process %d: no messages received so sleeping for 15 minutes' % process_id)
             sleep(900.0)
+            queue = sqs.get_queue_by_name(QueueName=queue_name)
 
         # get next batch of messages (up to 10 at a time)
         message_batch = queue.receive_messages(MaxNumberOfMessages=10, WaitTimeSeconds=20)
