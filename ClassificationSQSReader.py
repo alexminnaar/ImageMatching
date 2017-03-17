@@ -1,4 +1,5 @@
 import boto3
+from botocore.client import Config
 from ImageClassifier import CustomImageClassifier
 # from TitleClassifier import TitleClassifier
 import multiprocessing
@@ -8,10 +9,11 @@ import sys
 import logging
 import hashlib
 from time import sleep
+import socket
+socket.settimeout(10)
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
-
 
 # PREFIX = "ImageMatcherService"
 # SEPARATOR = 0x1e
@@ -24,8 +26,10 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
     logger.warning("Beginning to poll SQS")
 
+    config = Config(connect_timeout=50, read_timeout=70)
+
     # SQS client config
-    sqs = boto3.resource('sqs', region_name='us-east-1')
+    sqs = boto3.resource('sqs', region_name='us-east-1',config=config)
     queue = sqs.get_queue_by_name(QueueName=queue_name)
 
     # Memcache config
@@ -71,6 +75,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
         # process messages
         for message in message_batch:
+            logger.warning("Process %d: Processing message %s" %(process_id,message.body))
 
             # get image url from message
             image_url = message.body
@@ -104,9 +109,9 @@ def main():
     memcache_endpoint = sys.argv[2]
     min_prob = float(sys.argv[3])
 
-    sqs_polling(queue_name, memcache_endpoint, min_prob,1)
+    sqs_polling(queue_name, memcache_endpoint, min_prob, 1)
 
-    # keep track of processes to restart if needed. PID => Process
+    #keep track of processes to restart if needed. PID => Process
     # processes = {}
     #
     # num_processes = range(1, 9)
