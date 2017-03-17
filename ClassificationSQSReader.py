@@ -50,14 +50,14 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
             refresh_counter = 0
 
         # polling delay so aws does not throttle us
-        sleep(2.0)
+        sleep(3.0)
 
         # sleep longer if there are no messages on the queue the last time it was polled
         if no_messages:
             sleep(900.0)
 
         # get next batch of messages (up to 10 at a time)
-        message_batch = queue.receive_messages(MaxNumberOfMessages=10, WaitTimeSeconds=20)
+        message_batch = queue.receive_messages(MaxNumberOfMessages=20, WaitTimeSeconds=20)
 
         logger.warning('Process %d: received %d messages' % (process_id, len(message_batch)))
 
