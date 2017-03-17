@@ -42,6 +42,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
     while 1:
 
         refresh_counter += 1
+        logger.warning('Process %d: refresh counter value %d' % (process_id, refresh_counter))
 
         # every 20th poll, reconnect to sqs to prevent stale connection
         if refresh_counter % 20 == 0:
