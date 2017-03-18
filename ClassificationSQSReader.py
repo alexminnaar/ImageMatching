@@ -36,7 +36,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
     # # There will be a line of debug log for this
     # session.set_debug_logger()
 
-    sqs = boto3.client('sqs', config=config)
+    sqs = boto3.client('sqs', region='us-east-1',config=config)
 
     queue_url = sqs.get_queue_url(QueueName=queue_name)
 
