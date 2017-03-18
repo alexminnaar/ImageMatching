@@ -9,11 +9,13 @@ import sys
 import logging
 import hashlib
 from time import sleep
-import socket
-socket.settimeout(10)
+from botocore.session import Session
+from botocore.client import Config
+import boto3
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
+
 
 # PREFIX = "ImageMatcherService"
 # SEPARATOR = 0x1e
@@ -26,11 +28,21 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
     logger.warning("Beginning to poll SQS")
 
+    # Both timeouts default to 60, you can customize them, seperately
     config = Config(connect_timeout=50, read_timeout=70)
 
+    session = Session()
+
+    # There will be a line of debug log for this
+    session.set_debug_logger()
+
+    sqs = session.client('sqs', config=config)
+
+    queue_url = sqs.get_queue_url(QueueName=queue_name)
+
     # SQS client config
-    sqs = boto3.resource('sqs', region_name='us-east-1',config=config)
-    queue = sqs.get_queue_by_name(QueueName=queue_name)
+    # sqs = boto3.resource('sqs', region_name='us-east-1', config=config)
+    # queue = sqs.get_queue_by_name(QueueName=queue_name)
 
     # Memcache config
     memcache_client = Client((memcache_endpoint, 11211))
@@ -51,7 +63,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
         # every 20th poll, reconnect to sqs to prevent stale connection
         if refresh_counter % 20 == 0:
             logger.warning('Process %d: refreshing connection' % process_id)
-            queue = sqs.get_queue_by_name(QueueName=queue_name)
+            # queue = sqs.get_queue_by_name(QueueName=queue_name)
             refresh_counter = 0
 
         # polling delay so aws does not throttle us
@@ -61,10 +73,10 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
         if no_messages:
             logger.warning('Process %d: no messages received so sleeping for 15 minutes' % process_id)
             sleep(900.0)
-            queue = sqs.get_queue_by_name(QueueName=queue_name)
+            # queue = sqs.get_queue_by_name(QueueName=queue_name)
 
         # get next batch of messages (up to 10 at a time)
-        message_batch = queue.receive_messages(MaxNumberOfMessages=10, WaitTimeSeconds=20)
+        message_batch = sqs.receive_message(QueueUrl=queue_url, MaxNumberOfMessages=10, WaitTimeSeconds=20)
 
         logger.warning('Process %d: received %d messages' % (process_id, len(message_batch)))
 
@@ -75,7 +87,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
         # process messages
         for message in message_batch:
-            logger.warning("Process %d: Processing message %s" %(process_id,message.body))
+            logger.warning("Process %d: Processing message %s" % (process_id, message.body))
 
             # get image url from message
             image_url = message.body
@@ -111,7 +123,7 @@ def main():
 
     sqs_polling(queue_name, memcache_endpoint, min_prob, 1)
 
-    #keep track of processes to restart if needed. PID => Process
+    # keep track of processes to restart if needed. PID => Process
     # processes = {}
     #
     # num_processes = range(1, 9)
