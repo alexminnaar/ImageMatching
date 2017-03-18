@@ -1,5 +1,4 @@
 import boto3
-from botocore.client import Config
 from ImageClassifier import CustomImageClassifier
 # from TitleClassifier import TitleClassifier
 import multiprocessing
@@ -9,9 +8,6 @@ import sys
 import logging
 import hashlib
 from time import sleep
-from botocore.session import Session
-from botocore.client import Config
-import boto3
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -28,21 +24,9 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
     logger.warning("Beginning to poll SQS")
 
-    # Both timeouts default to 60, you can customize them, seperately
-    config = Config(connect_timeout=50, read_timeout=70)
-
-    # session = Session()
-    #
-    # # There will be a line of debug log for this
-    # session.set_debug_logger()
-
-    sqs = boto3.client('sqs', region_name='us-east-1',config=config)
-
-    queue_url = sqs.get_queue_url(QueueName=queue_name)
-
     # SQS client config
-    # sqs = boto3.resource('sqs', region_name='us-east-1', config=config)
-    # queue = sqs.get_queue_by_name(QueueName=queue_name)
+    sqs = boto3.resource('sqs', region_name='us-east-1')
+    queue = sqs.get_queue_by_name(QueueName=queue_name)
 
     # Memcache config
     memcache_client = Client((memcache_endpoint, 11211))
@@ -63,7 +47,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
         # every 20th poll, reconnect to sqs to prevent stale connection
         if refresh_counter % 20 == 0:
             logger.warning('Process %d: refreshing connection' % process_id)
-            # queue = sqs.get_queue_by_name(QueueName=queue_name)
+            queue = sqs.get_queue_by_name(QueueName=queue_name)
             refresh_counter = 0
 
         # polling delay so aws does not throttle us
@@ -73,10 +57,10 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
         if no_messages:
             logger.warning('Process %d: no messages received so sleeping for 15 minutes' % process_id)
             sleep(900.0)
-            # queue = sqs.get_queue_by_name(QueueName=queue_name)
+            queue = sqs.get_queue_by_name(QueueName=queue_name)
 
         # get next batch of messages (up to 10 at a time)
-        message_batch = sqs.receive_message(QueueUrl=queue_url['QueueUrl'], MaxNumberOfMessages=10, WaitTimeSeconds=20)
+        message_batch = queue.receive_messages(MaxNumberOfMessages=10, WaitTimeSeconds=20)
 
         logger.warning('Process %d: received %d messages' % (process_id, len(message_batch)))
 
@@ -87,10 +71,9 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
         # process messages
         for message in message_batch:
-            #logger.warning("Process %d: Processing message %s" % (process_id, message.body))
 
             # get image url from message
-            image_url = message
+            image_url = message.body
 
             # get image prediction
             try:
@@ -123,40 +106,40 @@ def main():
 
     sqs_polling(queue_name, memcache_endpoint, min_prob, 1)
 
-    # keep track of processes to restart if needed. PID => Process
-    # processes = {}
-    #
-    # num_processes = range(1, 9)
-    #
-    # for p_num in num_processes:
-    #     p = multiprocessing.Process(
-    #         target=sqs_polling, args=(queue_name, memcache_endpoint, min_prob, p_num,))
-    #     p.start()
-    #     processes[p_num] = p
-    #
-    # # periodically poll child processes to check if they are still alive
-    # while len(processes) > 0:
-    #
-    #     # check every 5 minutes
-    #     sleep(300.0)
-    #
-    #     for n in processes.keys():
-    #         p = processes[n]
-    #
-    #         # if process is dead, create a new one to take its place
-    #         if not p.is_alive():
-    #             logger.error('Process %d is dead! Starting new process to take its place.' % n)
-    #             replacement_p = multiprocessing.Process(target=sqs_polling,
-    #                                                     args=(queue_name, memcache_endpoint, min_prob, n,))
-    #             replacement_p.start()
-    #             processes[n] = replacement_p
-    #
-    #         elif p.is_alive():
-    #             logger.warning('Process %d is still alive' % n)
-    #
-    #         # since polling never ends, sqs_polling should never successfully exit but we add this for completeness
-    #         elif p.exitcode == 0:
-    #             p.join()
+    #keep track of processes to restart if needed. PID => Process
+    processes = {}
+
+    num_processes = range(1, 9)
+
+    for p_num in num_processes:
+        p = multiprocessing.Process(
+            target=sqs_polling, args=(queue_name, memcache_endpoint, min_prob, p_num,))
+        p.start()
+        processes[p_num] = p
+
+    # periodically poll child processes to check if they are still alive
+    while len(processes) > 0:
+
+        # check every 5 minutes
+        sleep(300.0)
+
+        for n in processes.keys():
+            p = processes[n]
+
+            # if process is dead, create a new one to take its place
+            if not p.is_alive():
+                logger.error('Process %d is dead! Starting new process to take its place.' % n)
+                replacement_p = multiprocessing.Process(target=sqs_polling,
+                                                        args=(queue_name, memcache_endpoint, min_prob, n,))
+                replacement_p.start()
+                processes[n] = replacement_p
+
+            elif p.is_alive():
+                logger.warning('Process %d is still alive' % n)
+
+            # since polling never ends, sqs_polling should never successfully exit but we add this for completeness
+            elif p.exitcode == 0:
+                p.join()
 
 
 if __name__ == "__main__":
