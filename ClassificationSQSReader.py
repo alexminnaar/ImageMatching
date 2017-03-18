@@ -9,7 +9,7 @@ import logging
 import hashlib
 from time import sleep
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -104,7 +104,7 @@ def main():
     memcache_endpoint = sys.argv[2]
     min_prob = float(sys.argv[3])
 
-    sqs_polling(queue_name, memcache_endpoint, min_prob, 1)
+    #sqs_polling(queue_name, memcache_endpoint, min_prob, 1)
 
     #keep track of processes to restart if needed. PID => Process
     processes = {}
