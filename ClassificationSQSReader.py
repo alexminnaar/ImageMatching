@@ -87,7 +87,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
         # process messages
         for message in message_batch:
-            logger.warning("Process %d: Processing message %s" % (process_id, message.body))
+            #logger.warning("Process %d: Processing message %s" % (process_id, message.body))
 
             # get image url from message
             image_url = message.body
