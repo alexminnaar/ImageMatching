@@ -76,7 +76,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
             # queue = sqs.get_queue_by_name(QueueName=queue_name)
 
         # get next batch of messages (up to 10 at a time)
-        message_batch = sqs.receive_message(QueueUrl=queue_url, MaxNumberOfMessages=10, WaitTimeSeconds=20)
+        message_batch = sqs.receive_message(QueueUrl=queue_url['QueueUrl'], MaxNumberOfMessages=10, WaitTimeSeconds=20)
 
         logger.warning('Process %d: received %d messages' % (process_id, len(message_batch)))
 
