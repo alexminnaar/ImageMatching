@@ -31,12 +31,12 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
     # Both timeouts default to 60, you can customize them, seperately
     config = Config(connect_timeout=50, read_timeout=70)
 
-    session = Session()
+    # session = Session()
+    #
+    # # There will be a line of debug log for this
+    # session.set_debug_logger()
 
-    # There will be a line of debug log for this
-    session.set_debug_logger()
-
-    sqs = session.client('sqs', config=config)
+    sqs = boto3.client('sqs', config=config)
 
     queue_url = sqs.get_queue_url(QueueName=queue_name)
 
