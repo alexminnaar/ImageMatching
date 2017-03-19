@@ -9,7 +9,7 @@ import logging
 import hashlib
 from time import sleep
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
@@ -104,42 +104,42 @@ def main():
     memcache_endpoint = sys.argv[2]
     min_prob = float(sys.argv[3])
 
-    sqs_polling(queue_name, memcache_endpoint, min_prob, 1)
+    #sqs_polling(queue_name, memcache_endpoint, min_prob, 1)
 
     #keep track of processes to restart if needed. PID => Process
-    # processes = {}
-    #
-    # num_processes = range(1, 9)
-    #
-    # for p_num in num_processes:
-    #     p = multiprocessing.Process(
-    #         target=sqs_polling, args=(queue_name, memcache_endpoint, min_prob, p_num,))
-    #     p.start()
-    #     processes[p_num] = p
-    #
-    # # periodically poll child processes to check if they are still alive
-    # while len(processes) > 0:
-    #
-    #     # check every 5 minutes
-    #     sleep(300.0)
-    #
-    #     for n in processes.keys():
-    #         p = processes[n]
-    #
-    #         # if process is dead, create a new one to take its place
-    #         if not p.is_alive():
-    #             logger.error('Process %d is dead! Starting new process to take its place.' % n)
-    #             replacement_p = multiprocessing.Process(target=sqs_polling,
-    #                                                     args=(queue_name, memcache_endpoint, min_prob, n,))
-    #             replacement_p.start()
-    #             processes[n] = replacement_p
-    #
-    #         elif p.is_alive():
-    #             logger.warning('Process %d is still alive' % n)
-    #
-    #         # since polling never ends, sqs_polling should never successfully exit but we add this for completeness
-    #         elif p.exitcode == 0:
-    #             p.join()
+    processes = {}
+
+    num_processes = range(1, 9)
+
+    for p_num in num_processes:
+        p = multiprocessing.Process(
+            target=sqs_polling, args=(queue_name, memcache_endpoint, min_prob, p_num,))
+        p.start()
+        processes[p_num] = p
+
+    # periodically poll child processes to check if they are still alive
+    while len(processes) > 0:
+
+        # check every 5 minutes
+        sleep(300.0)
+
+        for n in processes.keys():
+            p = processes[n]
+
+            # if process is dead, create a new one to take its place
+            if not p.is_alive():
+                logger.error('Process %d is dead! Starting new process to take its place.' % n)
+                replacement_p = multiprocessing.Process(target=sqs_polling,
+                                                        args=(queue_name, memcache_endpoint, min_prob, n,))
+                replacement_p.start()
+                processes[n] = replacement_p
+
+            elif p.is_alive():
+                logger.warning('Process %d is still alive' % n)
+
+            # since polling never ends, sqs_polling should never successfully exit but we add this for completeness
+            elif p.exitcode == 0:
+                p.join()
 
 
 if __name__ == "__main__":
