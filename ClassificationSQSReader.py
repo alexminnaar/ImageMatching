@@ -109,7 +109,7 @@ def main():
     #keep track of processes to restart if needed. PID => Process
     processes = {}
 
-    num_processes = range(1, 10)
+    num_processes = range(1, 11)
 
     for p_num in num_processes:
         p = multiprocessing.Process(
