@@ -76,6 +76,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
             image_url = message.body
 
             # get image prediction
+            'x'
             try:
                 image_pred = image_clf.run_inference_on_image(image_url)
 
@@ -109,7 +110,7 @@ def main():
     #keep track of processes to restart if needed. PID => Process
     processes = {}
 
-    num_processes = range(1, 9)
+    num_processes = range(1, 10)
 
     for p_num in num_processes:
         p = multiprocessing.Process(
