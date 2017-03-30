@@ -172,7 +172,7 @@ class CustomImageClassifier:
 
 
 # def main():
-#     image_url="https://images.viglink.com/product/250x250/images-eu-ssl-images-amazon-com/42ead83131510dcf3ba4b9666462f4da9a4c8782.jpg?url=https%3A%2F%2Fimages-eu.ssl-images-amazon.com%2Fimages%2FI%2F41Getv2arAL.jpg%2F518prb1KzVL.jpg"
+#     image_url="https://img.grouponcdn.com/deal/4A6ywYmZ6iDmJshGcMZ6/Ri-960x582/v1/c700x420.jpg"
 #     my_classifier = CustomImageClassifier()
 #     pred = my_classifier.run_inference_on_image(image_url)
 #     print(pred)

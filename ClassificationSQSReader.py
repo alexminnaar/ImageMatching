@@ -93,6 +93,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
             except Exception:
                 logger.error("Failed to write to memcached", exc_info=True)
+                memcache_client.set('%s' % hashlib.md5(image_url).hexdigest(), "prediction error")
 
             # messages are always deleted
             finally:
@@ -104,9 +105,7 @@ def main():
     memcache_endpoint = sys.argv[2]
     min_prob = float(sys.argv[3])
 
-    #sqs_polling(queue_name, memcache_endpoint, min_prob, 1)
-
-    #keep track of processes to restart if needed. PID => Process
+    # keep track of processes to restart if needed. PID => Process
     processes = {}
 
     num_processes = range(1, 9)
