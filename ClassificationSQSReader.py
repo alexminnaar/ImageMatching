@@ -59,7 +59,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
             try:
                 image_pred = image_clf.run_inference_on_image(image_url)
 
-                logger.warning('Confidence: %s' % str(image_pred[1]))
+                logger.warning('%s | %s' % (image_url, str(image_pred[1])))
 
                 # write prediction to memcached
                 if image_pred[1] > min_prob:
