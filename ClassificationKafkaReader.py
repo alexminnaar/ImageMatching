@@ -19,7 +19,7 @@ def kafka_polling(kafka_topic, kafka_group_id, kafka_host, memcache_endpoint, mi
     logger.warning("Process %d: Beginning to poll Kafka" % process_id)
 
     logger.warning(
-        "Process %d: kafka topic: %s, groupid: %s, host: %s" % (process_id, kafka_topic, kafka_group_id, kafka_host))
+        "Process %d: Beginning to poll Kafka. Topic: %s, groupid: %s, host: %s" % (process_id, kafka_topic, kafka_group_id, kafka_host))
 
     # Kafka client config
     consumer = KafkaConsumer(kafka_topic, group_id=kafka_group_id, bootstrap_servers=[kafka_host])
