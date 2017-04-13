@@ -172,7 +172,7 @@ class CustomImageClassifier:
 
 
 # def main():
-#     image_url="https://images.viglink.com/product/250x250/images-na-ssl-images-amazon-com/e8771732c5395ffa0491283d27e9a9aaa5fae968.jpg?url=https%3A%2F%2Fimages-na.ssl-images-amazon.com%2Fimages%2FI%2F317cUa%252BiGTL.jpg"
+#     image_url="https://asset.conrad.com/media10/isa/160267/c1/-/de/993447_BB_00_FB/logitech-x-530-51-lautsprechersystem.jpg?x=520&y=520"
 #     my_classifier = CustomImageClassifier()
 #     pred = my_classifier.run_inference_on_image(image_url)
 #     print(pred)

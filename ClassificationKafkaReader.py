@@ -7,7 +7,7 @@ import logging
 import hashlib
 from time import sleep
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(message)s')
 logger = logging.getLogger(__name__)
 
 
@@ -16,10 +16,13 @@ def kafka_polling(kafka_topic, kafka_group_id, kafka_host, memcache_endpoint, mi
     Poll kafka topic - for each message received get image classification and persist result to memcache
     '''
 
-    logger.warning("Beginning to poll Kafka")
+    logger.warning("Process %d: Beginning to poll Kafka" % process_id)
+
+    logger.warning(
+        "Process %d: kafka topic: %s, groupid: %s, host: %s" % (process_id, kafka_topic, kafka_group_id, kafka_host))
 
     # Kafka client config
-    consumer = KafkaConsumer(kafka_topic, kafka_group_id, kafka_host)
+    consumer = KafkaConsumer(kafka_topic, group_id=kafka_group_id, bootstrap_servers=[kafka_host])
 
     # Memcache config
     memcache_client = Client((memcache_endpoint, 11211))
@@ -31,31 +34,31 @@ def kafka_polling(kafka_topic, kafka_group_id, kafka_host, memcache_endpoint, mi
 
         image_url = message.value.decode('utf-8')
 
+        logger.warning('Process %d: Received image url %s' % (process_id, image_url))
+
         # predict image category and persist to memcache
         try:
             image_pred = image_clf.run_inference_on_image(image_url)
 
-            logger.warning('Process %d: Prediction based on image |%s| is |%s| with confidence |%s|' % (process_id,
-                                                                                                        image_url,
-                                                                                                        image_pred[
-                                                                                                            0], str(
-                image_pred[1])))
+            logger.warning('%s | %s |%s' % (image_url, image_pred[0], str(image_pred[1])))
 
-            # write prediction to memcached
+            # write prediction to memcached if we are confident enough
             if image_pred[1] > min_prob:
                 memcache_client.set('%s' % hashlib.md5(image_url).hexdigest(), image_pred[0])
             else:
                 memcache_client.set('%s' % hashlib.md5(image_url).hexdigest(), "prediction below threshold")
 
         except Exception:
-            logger.error("Failed to write to memcached", exc_info=True)
+            logger.error("Process %d: Failed to write to memcached" % process_id, exc_info=True)
             memcache_client.set('%s' % hashlib.md5(image_url).hexdigest(), "prediction error")
 
 
 def main():
-    queue_name = sys.argv[1]
-    memcache_endpoint = sys.argv[2]
-    min_prob = float(sys.argv[3])
+    kafka_topic = sys.argv[1]
+    kafka_host = sys.argv[2]
+    kafka_group_id = sys.argv[3]
+    memcache_endpoint = sys.argv[4]
+    min_prob = float(sys.argv[5])
 
     # keep track of processes in dictionary to restart if needed i.e. {PID: Process}
     processes = {}
@@ -64,7 +67,7 @@ def main():
 
     for p_num in num_processes:
         p = multiprocessing.Process(
-            target=kafka_polling, args=(queue_name, memcache_endpoint, min_prob, p_num,))
+            target=kafka_polling, args=(kafka_topic, kafka_group_id, kafka_host, memcache_endpoint, min_prob, p_num,))
         p.start()
         processes[p_num] = p
 
@@ -81,7 +84,9 @@ def main():
             if not p.is_alive():
                 logger.error('Process %d is dead! Starting new process to take its place.' % n)
                 replacement_p = multiprocessing.Process(target=kafka_polling,
-                                                        args=(queue_name, memcache_endpoint, min_prob, n,))
+                                                        args=(
+                                                            kafka_topic, kafka_group_id, kafka_host, memcache_endpoint,
+                                                            min_prob, n,))
                 replacement_p.start()
                 processes[n] = replacement_p
 

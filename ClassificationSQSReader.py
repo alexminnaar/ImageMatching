@@ -7,7 +7,7 @@ import logging
 import hashlib
 from time import sleep
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(message)s')
 logger = logging.getLogger(__name__)
 
 
@@ -16,7 +16,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
     Poll SQS queue - for each message received get image classification and persist result to memcache
     '''
 
-    logger.warning("Beginning to poll SQS")
+    logger.warning("Process %d: Beginning to poll SQS" % process_id)
 
     # SQS client config
     sqs = boto3.resource('sqs', region_name='us-east-1')
@@ -61,7 +61,7 @@ def sqs_polling(queue_name, memcache_endpoint, min_prob, process_id):
 
                 logger.warning('%s | %s |%s' % (image_url, image_pred[0], str(image_pred[1])))
 
-                # write prediction to memcached
+                # write prediction to memcached if we are confident enough
                 if image_pred[1] > min_prob:
                     memcache_client.set('%s' % hashlib.md5(image_url).hexdigest(), image_pred[0])
                 else:
